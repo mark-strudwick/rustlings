@@ -203,7 +203,7 @@ fn main() {
         }
 
         Subcommands::Verify(_subargs) => {
-            verify(&exercises, (0, exercises.len()), verbose).unwrap_or_else(|_| std::process::exit(1));
+            verify(&exercises, verbose).unwrap_or_else(|_| std::process::exit(1));
         }
 
         Subcommands::Watch(_subargs) => match watch(&exercises, verbose) {
@@ -295,7 +295,7 @@ fn watch(exercises: &[Exercise], verbose: bool) -> notify::Result<WatchStatus> {
     clear_screen();
 
     let to_owned_hint = |t: &Exercise| t.hint.to_owned();
-    let failed_exercise_hint = match verify(exercises.iter(), (0, exercises.len()), verbose) {
+    let failed_exercise_hint = match verify(exercises.iter(), verbose) {
         Ok(_) => return Ok(WatchStatus::Finished),
         Err(exercise) => Arc::new(Mutex::new(Some(to_owned_hint(exercise)))),
     };
@@ -308,11 +308,11 @@ fn watch(exercises: &[Exercise], verbose: bool) -> notify::Result<WatchStatus> {
                         let filepath = b.as_path().canonicalize().unwrap();
                         let pending_exercises = exercises
                             .iter()
-                            .find(|e| filepath.ends_with(&e.path)).into_iter()
+                            .skip_while(|e| !filepath.ends_with(&e.path))
+                            // .filter(|e| filepath.ends_with(&e.path))
                             .chain(exercises.iter().filter(|e| !e.looks_done() && !filepath.ends_with(&e.path)));
-                        let num_done = exercises.iter().filter(|e| e.looks_done()).count();
                         clear_screen();
-                        match verify(pending_exercises, (num_done, exercises.len()), verbose) {
+                        match verify(pending_exercises, verbose) {
                             Ok(_) => return Ok(WatchStatus::Finished),
                             Err(exercise) => {
                                 let mut failed_exercise_hint = failed_exercise_hint.lock().unwrap();
